@@ -12,9 +12,8 @@ const Home: React.FC = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main>
-        <h1>Next.js with Firebase Cloud Messaging</h1>
-        <p>Enable notifications to receive updates</p>
+      <main style={{ margin: '20px', padding: '20px' }}>        {/* <h1>Next.js with Firebase Cloud Messaging</h1>
+        <p>Enable notifications to receive updates</p> */}
         
         {/* Our notification component */}
         <NotificationComponent />
