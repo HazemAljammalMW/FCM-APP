@@ -5,6 +5,7 @@ interface SendNotificationRequest {
   token: string;
   title: string;
   body: string;
+  img?: string;
 }
 
 // Initialize Firebase Admin if not already initialized
@@ -28,18 +29,21 @@ export default async function handler(
   }
 
   try {
-    const { token, title, body } = req.body as SendNotificationRequest;
+    const { token, title, body, img  } = req.body as SendNotificationRequest;
     
     if (!token || !title || !body) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
 
+    
+
     const message = {
       notification: {
         title,
         body,
       },
+      image: img || undefined,
       token,
     };
 

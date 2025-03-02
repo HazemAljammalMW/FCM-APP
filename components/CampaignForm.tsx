@@ -37,6 +37,7 @@ export default function CampaignForm() {
   const [scheduledTime, setScheduledTime] = useState('');
   const [body, setBody] = useState('');
   const [activeStep, setActiveStep] = useState(0);
+  const [img, setImg] = useState('');
 
   const handleNext = async () => {
     if (activeStep === steps.length - 1) {
@@ -52,54 +53,54 @@ export default function CampaignForm() {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  const handleReset = () => {
-    setActiveStep(0);
-  };
+ 
+const handleSubmit = async () => {
+  const now = new Date();
+  const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+  if (selectedDateTime < now) {
+    alert('Scheduled time cannot be in the past.');
+    return;
+  }
 
-  const handleSubmit = async () => {
-    const now = new Date();
-    const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
-    if (selectedDateTime < now) {
-      alert('Scheduled time cannot be in the past.');
-      return;
-    }
+  const delay = selectedDateTime.getTime() - now.getTime();
+  setTimeout(async () => {
+    try {
+      const token = await requestNotificationPermission();
+      if (!token) {
+        alert('Notification permission denied. Please enable it in your browser settings.');
+        return;
+      }
 
-    const delay = selectedDateTime.getTime() - now.getTime();
-    setTimeout(async () => {
-      try {
-        const token = await requestNotificationPermission();
-        if (!token) {
-          alert('Notification permission denied. Please enable it in your browser settings.');
-          return;
-        }
+      const newCampaign = {
+        id: Date.now().toString(),
+        name: campaignName,
+      };
+      await storeCampaignToken(newCampaign, token);
 
-        const newCampaign = {
-          id: Date.now().toString(),
-          name: campaignName,
-        };
-        await storeCampaignToken(newCampaign, token);
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, title, body }),
+      });
 
-        const response = await fetch('/api/send-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, title, body }),
-        });
+      if (!response.ok) {
+        throw new Error('Failed to send notification');
+      }
 
-        console.log('Notification Response:', response);
+      const data = await response.json();
+      console.log('Notification Response:', data);
 
-        if (!response.ok) {
-          throw new Error('Failed to send notification');
-        }
-
-        const data = await response.json();
-        console.log('Notification Response:', data);
-        alert('Notification Sent!');
-      } catch (error) {
-        console.error('Error sending notification:', error);
+      if (data.success) {
+        new Notification(title, { body });
+      } else {
         alert('Failed to send notification. Please try again.');
       }
-    }, delay);
-  };
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      alert('Failed to send notification. Please try again.');
+    }
+  }, delay);
+};
 
   return (
     <Box sx={{ maxWidth: 700, margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', height: '100vh', boxShadow: 3, p: 3, borderRadius: 2, overflowY: 'auto' }}>
@@ -110,8 +111,9 @@ export default function CampaignForm() {
             <StepLabel>{step.label}</StepLabel>
             <StepContent sx={{ mb: 2 }}> 
               <Typography>{step.description}</Typography>
-              {index === 0 && (
-                <Box component="form" sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {index === 0 && (
+                <Box component="form" sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ width: '45%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <TextField
                     fullWidth
                     label="Campaign Name"
@@ -120,7 +122,7 @@ export default function CampaignForm() {
                     required
                     margin="dense"
                     size="small"
-                    sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
+                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
                   />
                   <TextField
                     fullWidth
@@ -130,7 +132,7 @@ export default function CampaignForm() {
                     required
                     margin="dense"
                     size="small"
-                    sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
+                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
                   />
                   <TextField
                     fullWidth
@@ -142,34 +144,60 @@ export default function CampaignForm() {
                     rows={3}
                     margin="dense"
                     size="small"
-                    sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
+                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
                   />
+                  <TextField
+                    fullWidth
+                    label="Notification Image"
+                    value={img}
+                    onChange={(e) => setImg(e.target.value)}
+                    // rows={3}
+                    margin="dense"
+                    size="small"
+                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
+                  />
+                  </Box>
+                  <Box sx={{ width: '45%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div className="w-full border rounded-lg shadow-lg p-4 bg-white relative">
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-2 bg-gray-300 rounded-full"></div>
+                    <div className="mt-4 flex items-center">
+                        <div className="flex flex-col w-full">
+                        <p className="font-semibold">{title}</p>
+                        <p className="text-gray-600 text-sm">{body}</p>
+                        </div>
+                        {img && (
+                        <img src={img} alt="Notification" className="w-16 h-16 object-cover rounded-md ml-4 self-end" />
+                        )}
+                    </div>
+                  </div>
+                  </Box>
                 </Box>
-              )}
-              {index === 2 && (
+                )}
+               
+                {index === 2 && (
                 <Box component="form" sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <TextField
-                    fullWidth
-                    type="date"
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                    required
-                    margin="dense"
-                    size="small"
-                    sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
+                  fullWidth
+                  type="date"
+                  value={scheduledDate || new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  required
+                  margin="dense"
+                  size="small"
+                  sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
                   />
                   <TextField
-                    fullWidth
-                    type="time"
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                    required
-                    margin="dense"
-                    size="small"
-                    sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
+                  fullWidth
+                  type="time"
+                  value={scheduledTime || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  required
+                  margin="dense"
+                  size="small"
+                  sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
                   />
                 </Box>
-              )}
+                )}
               <Box sx={{ mb: 2 }}>
                 <Button
                   variant="contained"
@@ -191,6 +219,8 @@ export default function CampaignForm() {
           </Step>
         ))}
       </Stepper>
+      
     </Box>
+     
   );
 }
