@@ -4,6 +4,8 @@ import NotificationComponent from '../components/NotificationComponent';
 import CampaignForm from '@/components/CampaignForm';
 
 const Home: React.FC = () => {
+
+  
   return (
     <div>
       <Head>
