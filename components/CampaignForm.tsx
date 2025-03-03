@@ -1,6 +1,6 @@
 'use client'
-import React, { useState } from 'react';
-import { storeCampaignToken, Campaign } from '../firebase/campaign';
+import React, { use, useEffect, useState } from 'react';
+import { storeCampaignToken, Campaign,storeDeviceFCM } from '../firebase/campaign';
 import { requestNotificationPermission } from '../firebase/firebase';
 import Box from '@mui/material/Box';
 import Stepper from '@mui/material/Stepper';
@@ -54,54 +54,83 @@ export default function CampaignForm() {
   };
 
  
-const handleSubmit = async () => {
-  const now = new Date();
-  const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
-  if (selectedDateTime < now) {
-    alert('Scheduled time cannot be in the past.');
-    return;
-  }
-
-  const delay = selectedDateTime.getTime() - now.getTime();
-  setTimeout(async () => {
+  const handleSubmit = async () => {
+    if (!campaignName || !title || !body) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+  
+    const now = new Date();
+    const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+    if (selectedDateTime < now) {
+      alert("Scheduled time cannot be in the past.");
+      return;
+    }
+  
     try {
+      // Request notification permission and get token
       const token = await requestNotificationPermission();
       if (!token) {
-        alert('Notification permission denied. Please enable it in your browser settings.');
+        alert("Notification permission denied. Please enable it in your browser settings.");
         return;
       }
-
-      const newCampaign = {
-        id: Date.now().toString(),
+  
+      // Store the campaign in Firestore
+      const campaignId = Date.now().toString();
+      const newCampaign: Campaign = {
+        id: campaignId,
         name: campaignName,
+        title: title,
+        text: body,
+        image: img,
       };
-      await storeCampaignToken(newCampaign, token);
-
-      const response = await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, title, body }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send notification');
-      }
-
-      const data = await response.json();
-      console.log('Notification Response:', data);
-
-      if (data.success) {
-        new Notification(title, { body });
-      } else {
-        alert('Failed to send notification. Please try again.');
-      }
+      await storeCampaignToken(newCampaign);
+      await storeDeviceFCM(token);
+  
+      const delay = selectedDateTime.getTime() - now.getTime();
+  
+      // Delay the notification sending
+      setTimeout(async () => {
+        try {
+          const response = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              token, 
+              title, 
+              body, 
+              image: img, 
+              campaignId // ✅ Sending campaignId
+            }),
+          });
+  
+          if (!response.ok) throw new Error("Failed to send notification");
+  
+          const data = await response.json();
+          console.log("Notification Response:", data);
+  
+          if (data.success) {
+            new Notification(title, { body });
+          } else {
+            alert("Failed to send notification. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error sending notification:", error);
+          alert("Failed to send notification. Please try again.");
+        }
+      }, delay);
+  
     } catch (error) {
-      console.error('Error sending notification:', error);
-      alert('Failed to send notification. Please try again.');
+      console.error("Error handling campaign submission:", error);
+      alert("An error occurred while scheduling the campaign.");
     }
-  }, delay);
-};
+  };
 
+  useEffect(() => {
+
+    
+  }, []);
+  
   return (
     <Box sx={{ maxWidth: 700, margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', height: '100vh', boxShadow: 3, p: 3, borderRadius: 2, overflowY: 'auto' }}>
     <Stepper activeStep={activeStep} orientation="vertical" sx={{ width: '100%', mt: 0 }}>

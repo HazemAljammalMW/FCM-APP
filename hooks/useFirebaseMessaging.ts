@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { requestNotificationPermission, onMessageListener } from '../firebase/firebase';
 import { INotification } from '../types/notification';
+import { storeDeviceFCM } from '@/firebase/campaign';
 
 interface UseFirebaseMessagingReturn {
   fcmToken: string;
@@ -22,6 +23,7 @@ export default function useFirebaseMessaging(): UseFirebaseMessagingReturn {
         
         // Here you would typically send this token to your backend
         console.log('FCM token:', token);
+        storeDeviceFCM(token);
       }
     };
 

@@ -24,3 +24,22 @@ messaging.onBackgroundMessage(function(payload) {
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
+
+self.addEventListener('notificationclick', async (event) => {
+  event.notification.close(); // Close the notification
+
+  const notificationId = event.notification.data?.notificationId;
+  if (notificationId) {
+      // Send request to update notification status
+      fetch('/api/update-notification-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId }),
+      });
+  }
+
+  // Open a page (optional)
+  event.waitUntil(
+      clients.openWindow('/')
+  );
+});
