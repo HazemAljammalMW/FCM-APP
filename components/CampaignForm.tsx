@@ -10,7 +10,7 @@ import { storeCampaignToken, Campaign, storeDeviceFCM } from "../firebase/campai
 
 const steps = [
   {
-    label: "Enter campaign details",
+    label: "Notification",
     description:
       "Provide the campaign name, notification title, and body to proceed.",
   },
@@ -20,9 +20,9 @@ const steps = [
       "Select your target audience and choose the advertising channels where you would like to show your ads.",
   },
   {
-    label: "scheduling",
+    label: "Scheduling",
     description:
-      "Choose the start and end dates for your campaign, and set the daily budget.",
+      "Choose when to send you notifications.",
   },
 ];
 
@@ -57,14 +57,14 @@ export default function CampaignForm() {
       alert("Please fill in all required fields.");
       return;
     }
-
+  
     const now = new Date();
     const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
     if (selectedDateTime < now) {
       alert("Scheduled time cannot be in the past.");
       return;
     }
-
+  
     try {
       // Request notification permission and get token
       const token = await requestNotificationPermission();
@@ -72,7 +72,7 @@ export default function CampaignForm() {
         alert("Notification permission denied. Please enable it in your browser settings.");
         return;
       }
-
+  
       // Store the campaign in Firestore
       const campaignId = Date.now().toString();
       const newCampaign: Campaign = {
@@ -84,29 +84,29 @@ export default function CampaignForm() {
       };
       await storeCampaignToken(newCampaign);
       await storeDeviceFCM(token);
-
+  
       const delay = selectedDateTime.getTime() - now.getTime();
-
+  
       // Delay the notification sending
       setTimeout(async () => {
         try {
-          const response = await fetch("/api/send-notification", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              token,
-              title,
-              body,
-              image: img,
-              campaignId, // ✅ Sending campaignId
+          const response = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              token, 
+              title, 
+              body, 
+              image: img, 
+              campaignId // ✅ Sending campaignId
             }),
           });
-
+  
           if (!response.ok) throw new Error("Failed to send notification");
-
+  
           const data = await response.json();
           console.log("Notification Response:", data);
-
+  
           if (data.success) {
             new Notification(title, { body });
           } else {
@@ -117,6 +117,7 @@ export default function CampaignForm() {
           alert("Failed to send notification. Please try again.");
         }
       }, delay);
+  
     } catch (error) {
       console.error("Error handling campaign submission:", error);
       alert("An error occurred while scheduling the campaign.");
@@ -124,17 +125,32 @@ export default function CampaignForm() {
   };
 
   useEffect(() => {
-   
-  }, []);
 
- 
+    
+  }, []);
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-white rounded-md shadow-md">
+    <div className="max-w-5xl mx-auto p-6 bg-white rounded-md shadow-[0_4px_6px_rgba(0,0,0,0.9)] font-sans">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-800">Notification</h1>
+      </div>
+
       {/* Two-column layout */}
       <div className="flex gap-6">
-        {/* Left column: form fields and sticky navigation buttons */}
-        <div className="flex-1 relative">
-          {/* Form fields */}
+        {/* Left column: Form fields and navigation buttons */}
+        <div className="flex-1">
+          {/* Step description */}
+          <p className="mb-6 text-sm text-gray-600">
+            {steps[activeStep].label === "Notification"
+              ? "Provide the campaign name, notification title, and body to proceed."
+              : steps[activeStep].label === "Target"
+              ? "Select your target audience and choose where you'd like to show ads."
+              : steps[activeStep].label === "Scheduling"
+              ? "Choose when to send your notifications."
+              : "Review your details before finalizing."}
+          </p>
+
+          {/* Step-specific form fields */}
           {activeStep === 0 && (
             <div className="space-y-4">
               <div>
@@ -171,7 +187,7 @@ export default function CampaignForm() {
                 />
               </div>
               <div>
-                <Label htmlFor="img">Notification Image URL</Label>
+                <Label htmlFor="img">Notification Image URL (optional)</Label>
                 <Input
                   id="img"
                   value={img}
@@ -185,9 +201,8 @@ export default function CampaignForm() {
 
           {activeStep === 1 && (
             <div className="space-y-4">
-              <p>
-                This is the target selection step. Implement target audience
-                inputs or options here as needed.
+              <p className="text-sm text-gray-600">
+                This is the target selection step. Implement target audience inputs or options here as needed.
               </p>
             </div>
           )}
@@ -199,9 +214,7 @@ export default function CampaignForm() {
                 <Input
                   id="scheduledDate"
                   type="date"
-                  value={
-                    scheduledDate || new Date().toISOString().split("T")[0]
-                  }
+                  value={scheduledDate || new Date().toISOString().split("T")[0]}
                   onChange={(e) => setScheduledDate(e.target.value)}
                   required
                   className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
@@ -227,9 +240,9 @@ export default function CampaignForm() {
             </div>
           )}
 
-          {/* Sticky Navigation Buttons - arranged in a column */}
+          {/* Fixed Navigation Buttons - side-by-side, below form fields */}
           <div className="sticky bottom-0 bg-white py-4">
-            <div className="flex flex-col space-y-4">
+            <div className="flex justify-between">
               <button
                 type="button"
                 onClick={handleBack}
@@ -272,9 +285,9 @@ export default function CampaignForm() {
           </div>
         </div>
 
-        {/* Right column: Phone preview */}
+         {/* Right column: Phone preview */}
         {/* Phone container */}
-<div className="relative w-[300px] h-[600px] bg-white border-2 border-gray-300 rounded-[2rem] shadow-lg overflow-hidden">
+<div className="relative w-[300px] h-[600px] bg-white border-2 border-gray-300 rounded-[2rem] shadow-lg overflow-hidden ml-10 mr-5 mt-[-60px]">
   {/* Status bar */}
   <div className="absolute top-0 w-full h-8 flex items-center justify-between px-4 text-xs bg-gray-100 text-gray-700">
     <div>9:30</div>
@@ -293,21 +306,31 @@ export default function CampaignForm() {
     {/* Single notification */}
     <div className="flex items-start space-x-2">
       {/* App icon */}
-      <img
+      {/* <img
         src="https://via.placeholder.com/40x40.png?text=App"
         alt="App Icon"
         className="w-8 h-8 rounded-md"
-      />
+      /> */}
       <div className="flex-1 flex flex-col space-y-1">
         <div className="text-xs text-gray-600 font-medium">
           MIRAAYA • now
+          <svg
+    className="w-3 h-3 inline-block ml-1"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+
+  </svg>
         </div>
         <div className="text-sm font-semibold">
-          {title || "Your visitors are waiting for you!"}
+          {title || "Notification title"}
         </div>
         <div className="text-xs text-gray-600">
           {body ||
-            "Send timely, precise and relevant push notifications to your users for more and better engagement."}
+            "Notification body text. This is a preview of how your notification will appear on the user's device."}
         </div>
       </div>
       {/* User-provided image on the right */}
@@ -329,6 +352,7 @@ export default function CampaignForm() {
 
       </div>
 
+
       {/* Centered Pill-Style Stepper at the Bottom */}
       <div className="flex justify-center my-8">
         <div className="flex items-center space-x-4">
@@ -340,8 +364,8 @@ export default function CampaignForm() {
                 className={
                   "rounded-full px-8 py-1 text-sm font-medium transition-colors cursor-pointer " +
                   (isActive
-                    ? "bg-black text-white"
-                    : "bg-gray-200 text-gray-700")
+                    ? "bg-black "
+                    : "bg-gray-400")
                 }
               >
               </div>
