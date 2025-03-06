@@ -1,7 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import NotificationComponent from '../components/NotificationComponent';
-import CampaignForm from '@/components/CampaignForm';
+import LoginPage from './(auth)/login/page';
 
 const Home: React.FC = () => {
 
@@ -14,13 +13,14 @@ const Home: React.FC = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main style={{ margin: '20px', padding: '20px' }}>        {/* <h1>Next.js with Firebase Cloud Messaging</h1>
+      <main >        {/* <h1>Next.js with Firebase Cloud Messaging</h1>
         <p>Enable notifications to receive updates</p> */}
         
         {/* Our notification component */}
-        <NotificationComponent />
-        <CampaignForm />
+        {/* <NotificationComponent /> */}
+        {/* <CampaignForm /> */}
         {/* Rest of your page content */}
+        <LoginPage />
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, Messaging, MessagePayload } from 'firebase/messaging';
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,7 +13,7 @@ const firebaseConfig = {
 
 // Initialize Firebase // i get it bro
 const firebaseApp = initializeApp(firebaseConfig);
-
+export const auth = getAuth(firebaseApp);
 // Get messaging instance - null on server-side // dont get it bro
 export const messaging: Messaging | null = typeof window !== 'undefined' ? getMessaging(firebaseApp) : null;
 
