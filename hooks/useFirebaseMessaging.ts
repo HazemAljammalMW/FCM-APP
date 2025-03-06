@@ -34,10 +34,14 @@ export default function useFirebaseMessaging(): UseFirebaseMessagingReturn {
     const unsubscribe = onMessageListener().then(payload => {
       console.log('Received foreground message:', payload);
       if (payload) {
+        const { title, body } = payload.notification || {};
+          const image = payload.notification?.image;
         setNotification({
-          title: payload?.notification?.title,
-          body: payload?.notification?.body
+          title: title,
+          body: body,
+          image:image
         });
+        
       }
     });
 

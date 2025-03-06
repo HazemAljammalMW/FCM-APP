@@ -34,6 +34,9 @@ export default async function handler(
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
+    if(!image){
+      console.log("not img found");
+    }
 
     const db = admin.firestore();
 
@@ -45,13 +48,14 @@ export default async function handler(
       const message = {
         notification: {
           title,
-          body,
+          body, 
+          image: image || undefined,
         },
         data:{
-          notificationId: `${token}_${Date.now()}`, // Unique ID for tracking
+          notificationId: `${token.substring(0, 8)}_${Date.now()}`,
           campaignId
         },
-        image: image || undefined,
+       
         token,
       };
 
