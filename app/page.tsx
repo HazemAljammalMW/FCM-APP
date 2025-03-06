@@ -1,6 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import LoginPage from './(auth)/login/page';
+import LoginPage from './login/page';
 
 const Home: React.FC = () => {
 
