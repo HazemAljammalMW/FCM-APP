@@ -1,59 +1,91 @@
-'use client'
-import React, { use, useEffect, useState } from 'react';
-import { storeCampaignToken, Campaign,storeDeviceFCM } from '../firebase/campaign';
-import { requestNotificationPermission } from '../firebase/firebase';
-import Box from '@mui/material/Box';
-import Stepper from '@mui/material/Stepper';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
-import StepContent from '@mui/material/StepContent';
-import Button from '@mui/material/Button';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
+"use client";
 
-// Steps
+import React, { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { requestNotificationPermission } from "../firebase/firebase";
+import { storeCampaignToken, Campaign, storeDeviceFCM } from "../firebase/campaign";
+import { uploadImage } from "../firebase/firebaseStorage";  
 const steps = [
   {
-    label: 'Enter campaign details',
-    description: 'Provide the campaign name, notification title, and body to proceed.',
+    label: "Notification",
+    description:
+      "Provide the campaign name, notification title, and body to proceed.",
   },
   {
-    label: 'Target',
+    label: "Target",
     description:
-      'Select your target audience and choose the advertising channels where you would like to show your ads.',
+      "Select your target audience and choose the advertising channels where you would like to show your ads.",
   },
   {
-    label: 'scheduling ',
+    label: "Scheduling",
     description:
-      'Choose the start and end dates for your campaign, and set the daily budget.',
+      "Choose when to send you notifications.",
   },
 ];
 
 export default function CampaignForm() {
-  const [campaignName, setCampaignName] = useState('');
-  const [title, setTitle] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
-  const [body, setBody] = useState('');
+  const [campaignName, setCampaignName] = useState("");
+  const [title, setTitle] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [body, setBody] = useState("");
   const [activeStep, setActiveStep] = useState(0);
-  const [img, setImg] = useState('');
+  const [img, setImg] = useState("");
+
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string>(""); // Local preview URL
+  const [imgUrlInput, setImgUrlInput] = useState(""); // URL provided by the user
+  const [uploadedImgUrl, setUploadedImgUrl] = useState(""); // URL from Firebase Storage
+
+
+  const isDisabled = activeStep === 0 && (!campaignName || !title || !body);
+
+  // Handle file selection, create preview, and upload to Firebase Storage
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+
+      // Create a local URL for preview
+      const previewUrl = URL.createObjectURL(selectedFile);
+      setFilePreview(previewUrl);
+
+      try {
+        const path = `campaign_images/${Date.now()}_${selectedFile.name}`;
+        const url = await uploadImage(selectedFile, path);
+        setUploadedImgUrl(url);
+        console.log("Uploaded image URL:", url);
+      } catch (error) {
+        console.error("Image upload failed:", error);
+      }
+    }
+  };
+
+  // Determine the final image URL for submission and preview
+  const getFinalImageUrl = (): string => {
+    // If a file was selected, use the file preview (or uploaded URL if needed)
+    // Here we use the file preview for immediate display; however, you could also swap it for the uploaded URL.
+    return filePreview || imgUrlInput;
+  };
 
   const handleNext = async () => {
+    // If on the final step, submit the form
     if (activeStep === steps.length - 1) {
       await handleSubmit();
-    } else if (activeStep === 0 && (!campaignName || !title || !body)) {
+    } 
+    // Validate the first step: require campaign name, title, and body
+    else if (activeStep === 0 && (!campaignName || !title || !body)) {
       return;
     } else {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      setActiveStep((prev) => prev + 1);
     }
   };
 
   const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    setActiveStep((prev) => prev - 1);
   };
 
- 
   const handleSubmit = async () => {
     if (!campaignName || !title || !body) {
       alert("Please fill in all required fields.");
@@ -74,7 +106,7 @@ export default function CampaignForm() {
         alert("Notification permission denied. Please enable it in your browser settings.");
         return;
       }
-  
+      const finalImgUrl = uploadedImgUrl || imgUrlInput;
       // Store the campaign in Firestore
       const campaignId = Date.now().toString();
       const newCampaign: Campaign = {
@@ -82,7 +114,7 @@ export default function CampaignForm() {
         name: campaignName,
         title: title,
         text: body,
-        image: img,
+        image: finalImgUrl,
       };
       await storeCampaignToken(newCampaign);
       await storeDeviceFCM(token);
@@ -99,7 +131,7 @@ export default function CampaignForm() {
               token, 
               title, 
               body, 
-              image: img, 
+              image: finalImgUrl,
               campaignId // ✅ Sending campaignId
             }),
           });
@@ -130,126 +162,278 @@ export default function CampaignForm() {
 
     
   }, []);
-  
   return (
-    <Box sx={{ maxWidth: 700, margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', height: '100vh', boxShadow: 3, p: 3, borderRadius: 2, overflowY: 'auto' }}>
-    <Stepper activeStep={activeStep} orientation="vertical" sx={{ width: '100%', mt: 0 }}>
+    <div className="max-w-5xl mx-auto p-6 bg-white rounded-md shadow-[0_4px_6px_rgba(0,0,0,0.9)] font-sans">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-800">Notification</h1>
+      </div>
 
-        {steps.map((step, index) => (
-          <Step key={step.label}>
-            <StepLabel>{step.label}</StepLabel>
-            <StepContent sx={{ mb: 2 }}> 
-              <Typography>{step.description}</Typography>
-                {index === 0 && (
-                <Box component="form" sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box sx={{ width: '45%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <TextField
-                    fullWidth
-                    label="Campaign Name"
-                    value={campaignName}
-                    onChange={(e) => setCampaignName(e.target.value)}
-                    required
-                    margin="dense"
-                    size="small"
-                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Notification Title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    margin="dense"
-                    size="small"
-                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Notification Body"
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    required
-                    multiline
-                    rows={3}
-                    margin="dense"
-                    size="small"
-                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Notification Image"
-                    value={img}
-                    onChange={(e) => setImg(e.target.value)}
-                    // rows={3}
-                    margin="dense"
-                    size="small"
-                    sx={{ width: '100%', borderRadius: 1, boxShadow: 1 }}
-                  />
-                  </Box>
-                  <Box sx={{ width: '45%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <div className="w-full border rounded-lg shadow-lg p-4 bg-white relative">
-                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-2 bg-gray-300 rounded-full"></div>
-                    <div className="mt-4 flex items-center">
-                        <div className="flex flex-col w-full">
-                        <p className="font-semibold">{title}</p>
-                        <p className="text-gray-600 text-sm">{body}</p>
-                        </div>
-                        {img && (
-                        <img src={img} alt="Notification" className="w-16 h-16 object-cover rounded-md ml-4 self-end" />
-                        )}
-                    </div>
-                  </div>
-                  </Box>
-                </Box>
-                )}
-               
-                {index === 2 && (
-                <Box component="form" sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <TextField
-                  fullWidth
+      {/* Two-column layout */}
+      <div className="flex gap-6">
+        {/* Left column: Form fields and navigation buttons */}
+        <div className="flex-1">
+          {/* Step description */}
+          <p className="mb-6 text-sm text-gray-600">
+            {steps[activeStep].label === "Notification"
+              ? "Provide the campaign name, notification title, and body to proceed."
+              : steps[activeStep].label === "Target"
+              ? "Select your target audience and choose where you'd like to show ads."
+              : steps[activeStep].label === "Scheduling"
+              ? "Choose when to send your notifications."
+              : "Review your details before finalizing."}
+          </p>
+
+          {/* Step-specific form fields */}
+          {activeStep === 0 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="campaignName">Campaign Name</Label>
+                <input
+                  id="campaignName"
+                  value={campaignName}
+                  onChange={(e) => setCampaignName(e.target.value)}
+                  placeholder="Enter campaign name"
+                  required
+                  className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+                />
+              </div>
+              <div>
+                <Label htmlFor="title">Notification Title</Label>
+                <input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter notification title"
+                  required
+                  className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+                />
+              </div>
+              <div>
+                <Label htmlFor="body">Notification Body</Label>
+                <input 
+                  id="body"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Enter notification body"
+                  required
+                  className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+                />
+              </div>
+              <div>
+            {/* File Input for Image
+            <label>
+              Upload Image:
+              <input type="file" accept="image/*" onChange={handleFileChange} 
+               className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+
+              />
+            </label> */}
+          </div>
+          <div>
+            {/* Direct URL Input for Image */}
+            <Label htmlFor="img">Notification Image URL (optional)</Label>
+              <input
+                type="text"
+                placeholder="https://example.com/image.jpg"
+                value={imgUrlInput}
+                onChange={(e) => setImgUrlInput(e.target.value)}
+                className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+
+              />
+          </div>
+              {/* <div>
+                <Label htmlFor="img">Notification Image URL (optional)</Label>
+                <Input
+                  id="img"
+                  value={img}
+                  onChange={(e) => setImg(e.target.value)}
+                  placeholder="Enter image URL"
+                  className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+                />
+              </div> */}
+            </div>
+          )}
+
+          {activeStep === 1 && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                This is the target selection step. Implement target audience inputs or options here as needed.
+              </p>
+            </div>
+          )}
+
+          {activeStep === 2 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="scheduledDate">Scheduled Date</Label>
+                <Input
+                  id="scheduledDate"
                   type="date"
-                  value={scheduledDate || new Date().toISOString().split('T')[0]}
+                  value={scheduledDate || new Date().toISOString().split("T")[0]}
                   onChange={(e) => setScheduledDate(e.target.value)}
                   required
-                  margin="dense"
-                  size="small"
-                  sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
-                  />
-                  <TextField
-                  fullWidth
+                  className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+                />
+              </div>
+              <div>
+                <Label htmlFor="scheduledTime">Scheduled Time</Label>
+                <Input
+                  id="scheduledTime"
                   type="time"
-                  value={scheduledTime || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                  value={
+                    scheduledTime ||
+                    new Date().toLocaleTimeString("it-IT", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  }
                   onChange={(e) => setScheduledTime(e.target.value)}
                   required
-                  margin="dense"
-                  size="small"
-                  sx={{ width: '80%', borderRadius: 1, boxShadow: 1 }}
-                  />
-                </Box>
-                )}
-              <Box sx={{ mb: 2 }}>
-                <Button
-                  variant="contained"
-                  onClick={handleNext}
-                  sx={{ mt: 1, mr: 1 }}
-                  disabled={activeStep === 0 && (!campaignName || !title || !body)}
-                >
-                  {index === steps.length - 1 ? 'Finish' : 'Continue'}
-                </Button>
-                <Button
-                  disabled={index === 0}
-                  onClick={handleBack}
-                  sx={{ mt: 1, mr: 1 }}
-                >
-                  Back
-                </Button>
-              </Box>
-            </StepContent>
-          </Step>
-        ))}
-      </Stepper>
+                  className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Fixed Navigation Buttons - side-by-side, below form fields */}
+          <div className="sticky bottom-0 bg-white py-4">
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={activeStep === 0}
+                style={{
+                  backgroundColor: activeStep === 0 ? "#808080" : "#1f1f1f",
+                  color: "#ffffff",
+                  padding: "8px 16px",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: activeStep === 0 ? "not-allowed" : "pointer",
+                  transition: "background-color 0.2s ease-in-out",
+                  outline: "none",
+                }}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={isDisabled}
+                style={{
+                  backgroundColor: isDisabled ? "#808080" : "#000000",
+                  color: "#ffffff",
+                  padding: "8px 16px",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  transition: "background-color 0.2s ease-in-out",
+                  outline: "none",
+                }}
+              >
+                {activeStep === steps.length - 1 ? "Finish" : "Continue"}
+              </button>
+            </div>
+          </div>
+
+           {/* Centered Pill-Style Stepper at the Bottom */}
+      <div className="flex justify-center my-8">
+        <div className="flex items-center space-x-4">
+          {steps.map((step, index) => {
+            const isActive = index === activeStep;
+            return (
+              <div
+                key={step.label}
+                className={
+                  "rounded-full px-8 py-1 text-sm font-medium transition-colors cursor-pointer " +
+                  (isActive
+                    ? "bg-black "
+                    : "bg-gray-400")
+                }
+              >
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+
+
       
-    </Box>
-     
+        </div>
+
+         {/* Right column: Phone preview */}
+        {/* Phone container */}
+<div className="relative w-[300px] h-[600px] bg-white border-2 border-gray-300 rounded-[2rem] shadow-lg overflow-hidden ml-10 mr-5 mt-[-60px]">
+  {/* Status bar */}
+  <div className="absolute top-0 w-full h-8 flex items-center justify-between px-4 text-xs bg-gray-100 text-gray-700">
+    <div>9:30</div>
+    <div className="flex space-x-1">
+      <span className="w-3 h-3 bg-gray-400 rounded-sm inline-block" />
+      <span className="w-3 h-3 bg-gray-400 rounded-sm inline-block" />
+      <span className="w-4 h-3 bg-gray-400 rounded-sm inline-block" />
+    </div>
+  </div>
+
+  {/* Camera hole */}
+  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-black rounded-full" />
+
+  {/* Notification content area */}
+  <div className="mt-10 p-4">
+    {/* Single notification */}
+    <div className="flex items-start space-x-2">
+      {/* App icon */}
+      {/* <img
+        src="https://via.placeholder.com/40x40.png?text=App"
+        alt="App Icon"
+        className="w-8 h-8 rounded-md"
+      /> */}
+      <div className="flex-1 flex flex-col space-y-1">
+        <div className="text-xs text-gray-600 font-medium">
+          MIRAAYA • now
+          <svg
+    className="w-3 h-3 inline-block ml-1"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+
+  </svg>
+        </div>
+        <div className="text-sm font-semibold">
+          {title || "Notification title"}
+        </div>
+        <div className="text-xs text-gray-600">
+          {body ||
+            "Notification body text. This is a preview of how your notification will appear on the user's device."}
+        </div>
+        <hr></hr>
+      </div>
+      {/* User-provided image on the right */}
+      {getFinalImageUrl() && (
+        <img
+          src={getFinalImageUrl()}
+          alt="Notification Preview"
+          className="w-12 h-12 object-cover rounded-md self-start"
+        />
+      )}
+    </div>
+  </div>
+
+  {/* Bottom bar */}
+  <div className="absolute bottom-0 w-full h-6 flex items-center justify-center bg-white">
+    <div className="w-20 h-1 bg-black/50 rounded-full" />
+  </div>
+</div>
+
+      </div>
+
+    </div>
   );
 }
