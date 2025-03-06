@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { requestNotificationPermission } from "../firebase/firebase";
 import { storeCampaignToken, Campaign, storeDeviceFCM } from "../firebase/campaign";
-
+import { uploadImage } from "../firebase/firebaseStorage";  
 const steps = [
   {
     label: "Notification",
@@ -34,7 +32,43 @@ export default function CampaignForm() {
   const [body, setBody] = useState("");
   const [activeStep, setActiveStep] = useState(0);
   const [img, setImg] = useState("");
+
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string>(""); // Local preview URL
+  const [imgUrlInput, setImgUrlInput] = useState(""); // URL provided by the user
+  const [uploadedImgUrl, setUploadedImgUrl] = useState(""); // URL from Firebase Storage
+
+
   const isDisabled = activeStep === 0 && (!campaignName || !title || !body);
+
+  // Handle file selection, create preview, and upload to Firebase Storage
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+
+      // Create a local URL for preview
+      const previewUrl = URL.createObjectURL(selectedFile);
+      setFilePreview(previewUrl);
+
+      try {
+        const path = `campaign_images/${Date.now()}_${selectedFile.name}`;
+        const url = await uploadImage(selectedFile, path);
+        setUploadedImgUrl(url);
+        console.log("Uploaded image URL:", url);
+      } catch (error) {
+        console.error("Image upload failed:", error);
+      }
+    }
+  };
+
+  // Determine the final image URL for submission and preview
+  const getFinalImageUrl = (): string => {
+    // If a file was selected, use the file preview (or uploaded URL if needed)
+    // Here we use the file preview for immediate display; however, you could also swap it for the uploaded URL.
+    return filePreview || imgUrlInput;
+  };
+
   const handleNext = async () => {
     // If on the final step, submit the form
     if (activeStep === steps.length - 1) {
@@ -72,7 +106,7 @@ export default function CampaignForm() {
         alert("Notification permission denied. Please enable it in your browser settings.");
         return;
       }
-  
+      const finalImgUrl = uploadedImgUrl || imgUrlInput;
       // Store the campaign in Firestore
       const campaignId = Date.now().toString();
       const newCampaign: Campaign = {
@@ -80,7 +114,7 @@ export default function CampaignForm() {
         name: campaignName,
         title: title,
         text: body,
-        image: img,
+        image: finalImgUrl,
       };
       await storeCampaignToken(newCampaign);
       await storeDeviceFCM(token);
@@ -97,7 +131,7 @@ export default function CampaignForm() {
               token, 
               title, 
               body, 
-              image: img, 
+              image: finalImgUrl,
               campaignId // ✅ Sending campaignId
             }),
           });
@@ -155,7 +189,7 @@ export default function CampaignForm() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="campaignName">Campaign Name</Label>
-                <Input
+                <input
                   id="campaignName"
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
@@ -166,7 +200,7 @@ export default function CampaignForm() {
               </div>
               <div>
                 <Label htmlFor="title">Notification Title</Label>
-                <Input
+                <input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -177,7 +211,7 @@ export default function CampaignForm() {
               </div>
               <div>
                 <Label htmlFor="body">Notification Body</Label>
-                <Input
+                <input 
                   id="body"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -187,6 +221,28 @@ export default function CampaignForm() {
                 />
               </div>
               <div>
+            {/* File Input for Image
+            <label>
+              Upload Image:
+              <input type="file" accept="image/*" onChange={handleFileChange} 
+               className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+
+              />
+            </label> */}
+          </div>
+          <div>
+            {/* Direct URL Input for Image */}
+            <Label htmlFor="img">Notification Image URL (optional)</Label>
+              <input
+                type="text"
+                placeholder="https://example.com/image.jpg"
+                value={imgUrlInput}
+                onChange={(e) => setImgUrlInput(e.target.value)}
+                className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+
+              />
+          </div>
+              {/* <div>
                 <Label htmlFor="img">Notification Image URL (optional)</Label>
                 <Input
                   id="img"
@@ -195,7 +251,7 @@ export default function CampaignForm() {
                   placeholder="Enter image URL"
                   className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
                 />
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -283,6 +339,31 @@ export default function CampaignForm() {
               </button>
             </div>
           </div>
+
+           {/* Centered Pill-Style Stepper at the Bottom */}
+      <div className="flex justify-center my-8">
+        <div className="flex items-center space-x-4">
+          {steps.map((step, index) => {
+            const isActive = index === activeStep;
+            return (
+              <div
+                key={step.label}
+                className={
+                  "rounded-full px-8 py-1 text-sm font-medium transition-colors cursor-pointer " +
+                  (isActive
+                    ? "bg-black "
+                    : "bg-gray-400")
+                }
+              >
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+
+
+      
         </div>
 
          {/* Right column: Phone preview */}
@@ -332,11 +413,12 @@ export default function CampaignForm() {
           {body ||
             "Notification body text. This is a preview of how your notification will appear on the user's device."}
         </div>
+        <hr></hr>
       </div>
       {/* User-provided image on the right */}
-      {img && (
+      {getFinalImageUrl() && (
         <img
-          src={img}
+          src={getFinalImageUrl()}
           alt="Notification Preview"
           className="w-12 h-12 object-cover rounded-md self-start"
         />
@@ -352,27 +434,6 @@ export default function CampaignForm() {
 
       </div>
 
-
-      {/* Centered Pill-Style Stepper at the Bottom */}
-      <div className="flex justify-center my-8">
-        <div className="flex items-center space-x-4">
-          {steps.map((step, index) => {
-            const isActive = index === activeStep;
-            return (
-              <div
-                key={step.label}
-                className={
-                  "rounded-full px-8 py-1 text-sm font-medium transition-colors cursor-pointer " +
-                  (isActive
-                    ? "bg-black "
-                    : "bg-gray-400")
-                }
-              >
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
