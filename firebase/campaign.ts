@@ -2,7 +2,6 @@ import {
   getFirestore,
   doc,
   setDoc,
-  getDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -12,6 +11,7 @@ export interface Campaign {
   title: string;
   text:string;
   image: string;
+  send_at: Date;
 }
 
 export async function storeCampaignToken(campaign: Campaign) {
@@ -22,26 +22,4 @@ export async function storeCampaignToken(campaign: Campaign) {
     sent_count: 0,
     open_count: 0,
   });
-}
-
-export async function storeDeviceFCM(token: string) {
-  try {
-    const db = getFirestore();
-    const tokenRef = doc(db, "devices", token);
-    const checkToken = await getDoc(tokenRef);
-    if (checkToken.exists()) {
-      return;
-    }
-    await setDoc(
-      doc(db, "devices", token),
-      {
-        token,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  } catch (e) {
-    console.log(e);
-  }
 }

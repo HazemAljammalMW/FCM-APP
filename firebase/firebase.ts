@@ -18,35 +18,35 @@ export const auth = getAuth(firebaseApp);
 export const messaging: Messaging | null = typeof window !== 'undefined' ? getMessaging(firebaseApp) : null;
 
 // Request permission and get FCM token // i dont get it bro
-// export const requestNotificationPermission = async (): Promise<string | null> => {
-//   try {
-//     if (!messaging) return null;
+export const requestNotificationPermission = async (): Promise<string | null> => {
+  try {
+    if (!messaging) return null;
     
-//     const permission = await Notification.requestPermission();
-//     if (permission !== 'granted') {
-//       console.log('Notification permission denied');
-//       return null;
-//     }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.log('Notification permission denied');
+      return null;
+    }
 
-//     // Get token
-//     const token = await getToken(messaging, {
-//       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
-//     });
+    // Get token
+    const token = await getToken(messaging, {
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    });
     
-//     return token;
-//   } catch (error) {
-//     console.error('An error occurred while retrieving token:', error);
-//     return null;
-//   }
-// };
+    return token;
+  } catch (error) {
+    console.error('An error occurred while retrieving token:', error);
+    return null;
+  }
+};
 
-// // Handle foreground messages
-// export const onMessageListener = (): Promise<MessagePayload | null> => {
-//   return new Promise((resolve) => {
-//     if (!messaging) return resolve(null);
+// Handle foreground messages
+export const onMessageListener = (): Promise<MessagePayload | null> => {
+  return new Promise((resolve) => {
+    if (!messaging) return resolve(null);
     
-//     onMessage(messaging, (payload) => {
-//       resolve(payload);
-//     });
-//   });
-// };
+    onMessage(messaging, (payload) => {
+      resolve(payload);
+    });
+  });
+};

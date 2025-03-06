@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { requestNotificationPermission } from "../firebase/firebase";
-import { storeCampaignToken, Campaign, storeDeviceFCM } from "../firebase/campaign";
-import { uploadImage } from "../firebase/firebaseStorage";  
+import { storeCampaignToken, Campaign } from "../firebase/campaign";
+import { se } from '@/app/api/auth/login';
 const steps = [
   {
     label: "Notification",
@@ -31,9 +30,7 @@ export default function CampaignForm() {
   const [scheduledTime, setScheduledTime] = useState("");
   const [body, setBody] = useState("");
   const [activeStep, setActiveStep] = useState(0);
-  const [img, setImg] = useState("");
 
-  const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string>(""); // Local preview URL
   const [imgUrlInput, setImgUrlInput] = useState(""); // URL provided by the user
   const [uploadedImgUrl, setUploadedImgUrl] = useState(""); // URL from Firebase Storage
@@ -41,26 +38,7 @@ export default function CampaignForm() {
 
   const isDisabled = activeStep === 0 && (!campaignName || !title || !body);
 
-  // Handle file selection, create preview, and upload to Firebase Storage
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
 
-      // Create a local URL for preview
-      const previewUrl = URL.createObjectURL(selectedFile);
-      setFilePreview(previewUrl);
-
-      try {
-        const path = `campaign_images/${Date.now()}_${selectedFile.name}`;
-        const url = await uploadImage(selectedFile, path);
-        setUploadedImgUrl(url);
-        console.log("Uploaded image URL:", url);
-      } catch (error) {
-        console.error("Image upload failed:", error);
-      }
-    }
-  };
 
   // Determine the final image URL for submission and preview
   const getFinalImageUrl = (): string => {
@@ -73,7 +51,7 @@ export default function CampaignForm() {
     // If on the final step, submit the form
     if (activeStep === steps.length - 1) {
       await handleSubmit();
-    } 
+    }
     // Validate the first step: require campaign name, title, and body
     else if (activeStep === 0 && (!campaignName || !title || !body)) {
       return;
@@ -91,21 +69,16 @@ export default function CampaignForm() {
       alert("Please fill in all required fields.");
       return;
     }
-  
+
     const now = new Date();
     const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
     if (selectedDateTime < now) {
       alert("Scheduled time cannot be in the past.");
       return;
     }
-  
+
     try {
       // Request notification permission and get token
-      const token = await requestNotificationPermission();
-      if (!token) {
-        alert("Notification permission denied. Please enable it in your browser settings.");
-        return;
-      }
       const finalImgUrl = uploadedImgUrl || imgUrlInput;
       // Store the campaign in Firestore
       const campaignId = Date.now().toString();
@@ -115,32 +88,31 @@ export default function CampaignForm() {
         title: title,
         text: body,
         image: finalImgUrl,
+        send_at: selectedDateTime,
       };
       await storeCampaignToken(newCampaign);
-      await storeDeviceFCM(token);
-  
+
       const delay = selectedDateTime.getTime() - now.getTime();
-  
+
       // Delay the notification sending
       setTimeout(async () => {
         try {
-          const response = await fetch('/api/send-notification', {
+          const response = await fetch('/app/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              token, 
-              title, 
-              body, 
+            body: JSON.stringify({
+              title,
+              body,
               image: finalImgUrl,
               campaignId // ✅ Sending campaignId
             }),
           });
-  
+
           if (!response.ok) throw new Error("Failed to send notification");
-  
+
           const data = await response.json();
           console.log("Notification Response:", data);
-  
+
           if (data.success) {
             new Notification(title, { body });
           } else {
@@ -151,7 +123,7 @@ export default function CampaignForm() {
           alert("Failed to send notification. Please try again.");
         }
       }, delay);
-  
+
     } catch (error) {
       console.error("Error handling campaign submission:", error);
       alert("An error occurred while scheduling the campaign.");
@@ -160,7 +132,7 @@ export default function CampaignForm() {
 
   useEffect(() => {
 
-    
+
   }, []);
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white rounded-md shadow-[0_4px_6px_rgba(0,0,0,0.9)] font-sans">
@@ -178,10 +150,10 @@ export default function CampaignForm() {
             {steps[activeStep].label === "Notification"
               ? "Provide the campaign name, notification title, and body to proceed."
               : steps[activeStep].label === "Target"
-              ? "Select your target audience and choose where you'd like to show ads."
-              : steps[activeStep].label === "Scheduling"
-              ? "Choose when to send your notifications."
-              : "Review your details before finalizing."}
+                ? "Select your target audience and choose where you'd like to show ads."
+                : steps[activeStep].label === "Scheduling"
+                  ? "Choose when to send your notifications."
+                  : "Review your details before finalizing."}
           </p>
 
           {/* Step-specific form fields */}
@@ -211,7 +183,7 @@ export default function CampaignForm() {
               </div>
               <div>
                 <Label htmlFor="body">Notification Body</Label>
-                <input 
+                <input
                   id="body"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -221,37 +193,21 @@ export default function CampaignForm() {
                 />
               </div>
               <div>
-            {/* File Input for Image
-            <label>
-              Upload Image:
-              <input type="file" accept="image/*" onChange={handleFileChange} 
-               className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
 
-              />
-            </label> */}
-          </div>
-          <div>
-            {/* Direct URL Input for Image */}
-            <Label htmlFor="img">Notification Image URL (optional)</Label>
-              <input
-                type="text"
-                placeholder="https://example.com/image.jpg"
-                value={imgUrlInput}
-                onChange={(e) => setImgUrlInput(e.target.value)}
-                className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
-
-              />
-          </div>
-              {/* <div>
+              </div>
+              <div>
+                {/* Direct URL Input for Image */}
                 <Label htmlFor="img">Notification Image URL (optional)</Label>
-                <Input
-                  id="img"
-                  value={img}
-                  onChange={(e) => setImg(e.target.value)}
-                  placeholder="Enter image URL"
+                <input
+                  type="text"
+                  placeholder="https://example.com/image.jpg"
+                  value={imgUrlInput}
+                  onChange={(e) => setImgUrlInput(e.target.value)}
                   className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
+
                 />
-              </div> */}
+              </div>
+
             </div>
           )}
 
@@ -340,97 +296,93 @@ export default function CampaignForm() {
             </div>
           </div>
 
-           {/* Centered Pill-Style Stepper at the Bottom */}
-      <div className="flex justify-center my-8">
-        <div className="flex items-center space-x-4">
-          {steps.map((step, index) => {
-            const isActive = index === activeStep;
-            return (
-              <div
-                key={step.label}
-                className={
-                  "rounded-full px-8 py-1 text-sm font-medium transition-colors cursor-pointer " +
-                  (isActive
-                    ? "bg-black "
-                    : "bg-gray-400")
-                }
-              >
-              </div>
-            );
-          })}
+          {/* Centered Pill-Style Stepper at the Bottom */}
+          <div className="flex justify-center my-8">
+            <div className="flex items-center space-x-4">
+              {steps.map((step, index) => {
+                const isActive = index === activeStep;
+                return (
+                  <div
+                    key={step.label}
+                    className={
+                      "rounded-full px-8 py-1 text-sm font-medium transition-colors cursor-pointer " +
+                      (isActive
+                        ? "bg-black "
+                        : "bg-gray-400")
+                    }
+                  >
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+
+
+
         </div>
-      </div>
 
-
-
-      
-        </div>
-
-         {/* Right column: Phone preview */}
+        {/* Right column: Phone preview */}
         {/* Phone container */}
-<div className="relative w-[300px] h-[600px] bg-white border-2 border-gray-300 rounded-[2rem] shadow-lg overflow-hidden ml-10 mr-5 mt-[-60px]">
-  {/* Status bar */}
-  <div className="absolute top-0 w-full h-8 flex items-center justify-between px-4 text-xs bg-gray-100 text-gray-700">
-    <div>9:30</div>
-    <div className="flex space-x-1">
-      <span className="w-3 h-3 bg-gray-400 rounded-sm inline-block" />
-      <span className="w-3 h-3 bg-gray-400 rounded-sm inline-block" />
-      <span className="w-4 h-3 bg-gray-400 rounded-sm inline-block" />
-    </div>
-  </div>
+        <div className="relative w-[300px] h-[600px] bg-white border-2 border-gray-300 rounded-[2rem] shadow-lg overflow-hidden ml-10 mr-5 mt-[-60px]">
+          {/* Status bar */}
+          <div className="absolute top-0 w-full h-8 flex items-center justify-between px-4 text-xs bg-gray-100 text-gray-700">
+            <div>9:30</div>
+            <div className="flex space-x-1">
+              <span className="w-3 h-3 bg-gray-400 rounded-sm inline-block" />
+              <span className="w-3 h-3 bg-gray-400 rounded-sm inline-block" />
+              <span className="w-4 h-3 bg-gray-400 rounded-sm inline-block" />
+            </div>
+          </div>
 
-  {/* Camera hole */}
-  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-black rounded-full" />
+          {/* Camera hole */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-black rounded-full" />
 
-  {/* Notification content area */}
-  <div className="mt-10 p-4">
-    {/* Single notification */}
-    <div className="flex items-start space-x-2">
-      {/* App icon */}
-      {/* <img
-        src="https://via.placeholder.com/40x40.png?text=App"
-        alt="App Icon"
-        className="w-8 h-8 rounded-md"
-      /> */}
-      <div className="flex-1 flex flex-col space-y-1">
-        <div className="text-xs text-gray-600 font-medium">
-          MIRAAYA • now
-          <svg
-    className="w-3 h-3 inline-block ml-1"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+          {/* Notification content area */}
+          <div className="mt-10 p-4">
+            {/* Single notification */}
+            <div className="flex items-start space-x-2">
+              {/* App icon */}
 
-  </svg>
+              <div className="flex-1 flex flex-col space-y-1">
+                <div className="text-xs text-gray-600 font-medium">
+                  MIRAAYA • now
+                  <svg
+                    className="w-3 h-3 inline-block ml-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+
+                  </svg>
+                </div>
+                <div className="text-sm font-semibold">
+                  {title || "Notification title"}
+                </div>
+                <div className="text-xs text-gray-600">
+                  {body ||
+                    "Notification body text. This is a preview of how your notification will appear on the user's device."}
+                </div>
+                <hr></hr>
+              </div>
+              {/* User-provided image on the right */}
+              {getFinalImageUrl() && (
+                <img
+                  src={getFinalImageUrl()}
+                  alt="Notification Preview"
+                  className="w-12 h-12 object-cover rounded-md self-start"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="absolute bottom-0 w-full h-6 flex items-center justify-center bg-white">
+            <div className="w-20 h-1 bg-black/50 rounded-full" />
+          </div>
         </div>
-        <div className="text-sm font-semibold">
-          {title || "Notification title"}
-        </div>
-        <div className="text-xs text-gray-600">
-          {body ||
-            "Notification body text. This is a preview of how your notification will appear on the user's device."}
-        </div>
-        <hr></hr>
-      </div>
-      {/* User-provided image on the right */}
-      {getFinalImageUrl() && (
-        <img
-          src={getFinalImageUrl()}
-          alt="Notification Preview"
-          className="w-12 h-12 object-cover rounded-md self-start"
-        />
-      )}
-    </div>
-  </div>
-
-  {/* Bottom bar */}
-  <div className="absolute bottom-0 w-full h-6 flex items-center justify-center bg-white">
-    <div className="w-20 h-1 bg-black/50 rounded-full" />
-  </div>
-</div>
 
       </div>
 
