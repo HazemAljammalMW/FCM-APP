@@ -11,11 +11,9 @@ export default function Page() {
         router.push('/marketing');
     }
     return (
-        <>
         <div className="mt-10">
         <CampaignForm/>
         </div>
-        </>
     );
 }
 
