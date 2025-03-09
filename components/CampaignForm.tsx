@@ -1,5 +1,5 @@
 "use client";
-
+ 
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,18 +11,18 @@ const steps = [
     description:
       "Provide the campaign name, notification title, and body to proceed.",
   },
-  {
-    label: "Target",
-    description:
-      "Select your target audience and choose the advertising channels where you would like to show your ads.",
-  },
+  // {
+  //   label: "Target",
+  //   description:
+  //     "Select your target audience and choose the advertising channels where you would like to show your ads.",
+  // },
   {
     label: "Scheduling",
     description:
       "Choose when to send you notifications.",
   },
 ];
-
+ 
 export default function CampaignForm() {
   const [campaignName, setCampaignName] = useState("");
   const [title, setTitle] = useState("");
@@ -30,23 +30,23 @@ export default function CampaignForm() {
   const [scheduledTime, setScheduledTime] = useState("");
   const [body, setBody] = useState("");
   const [activeStep, setActiveStep] = useState(0);
-
+ 
   const [filePreview, setFilePreview] = useState<string>(""); // Local preview URL
   const [imgUrlInput, setImgUrlInput] = useState(""); // URL provided by the user
   const [uploadedImgUrl, setUploadedImgUrl] = useState(""); // URL from Firebase Storage
-
-
+ 
+ 
   const isDisabled = activeStep === 0 && (!campaignName || !title || !body);
-
-
-
+ 
+ 
+ 
   // Determine the final image URL for submission and preview
   const getFinalImageUrl = (): string => {
     // If a file was selected, use the file preview (or uploaded URL if needed)
     // Here we use the file preview for immediate display; however, you could also swap it for the uploaded URL.
     return filePreview || imgUrlInput;
   };
-
+ 
   const handleNext = async () => {
     // If on the final step, submit the form
     if (activeStep === steps.length - 1) {
@@ -59,24 +59,24 @@ export default function CampaignForm() {
       setActiveStep((prev) => prev + 1);
     }
   };
-
+ 
   const handleBack = () => {
     setActiveStep((prev) => prev - 1);
   };
-
+ 
   const handleSubmit = async () => {
     if (!campaignName || !title || !body) {
       alert("Please fill in all required fields.");
       return;
     }
-
+ 
     const now = new Date();
     const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
     if (selectedDateTime < now) {
       alert("Scheduled time cannot be in the past.");
       return;
     }
-
+ 
     try {
       // Request notification permission and get token
       const finalImgUrl = uploadedImgUrl || imgUrlInput;
@@ -91,11 +91,10 @@ export default function CampaignForm() {
         send_at: selectedDateTime,
       };
       await storeCampaignToken(newCampaign);
-
+ 
       const delay = selectedDateTime.getTime() - now.getTime();
-
-      // Delay the notification sending
-      setTimeout(async () => {
+ 
+ 
         try {
           const response = await fetch('/app/api/send-notification', {
             method: 'POST',
@@ -107,12 +106,12 @@ export default function CampaignForm() {
               campaignId // ✅ Sending campaignId
             }),
           });
-
+ 
           if (!response.ok) throw new Error("Failed to send notification");
-
+ 
           const data = await response.json();
           console.log("Notification Response:", data);
-
+ 
           if (data.success) {
             new Notification(title, { body });
           } else {
@@ -122,17 +121,16 @@ export default function CampaignForm() {
           console.error("Error sending notification:", error);
           alert("Failed to send notification. Please try again.");
         }
-      }, delay);
-
+ 
     } catch (error) {
       console.error("Error handling campaign submission:", error);
       alert("An error occurred while scheduling the campaign.");
     }
   };
-
+ 
   useEffect(() => {
-
-
+ 
+ 
   }, []);
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white rounded-md shadow-[0_4px_6px_rgba(0,0,0,0.9)] font-sans">
@@ -140,7 +138,7 @@ export default function CampaignForm() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-800">Notification</h1>
       </div>
-
+ 
       {/* Two-column layout */}
       <div className="flex gap-6">
         {/* Left column: Form fields and navigation buttons */}
@@ -155,7 +153,7 @@ export default function CampaignForm() {
                   ? "Choose when to send your notifications."
                   : "Review your details before finalizing."}
           </p>
-
+ 
           {/* Step-specific form fields */}
           {activeStep === 0 && (
             <div className="space-y-4">
@@ -193,7 +191,7 @@ export default function CampaignForm() {
                 />
               </div>
               <div>
-
+ 
               </div>
               <div>
                 {/* Direct URL Input for Image */}
@@ -204,22 +202,22 @@ export default function CampaignForm() {
                   value={imgUrlInput}
                   onChange={(e) => setImgUrlInput(e.target.value)}
                   className="!h-10 !w-full !rounded-xl !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !placeholder-gray-400 !focus:outline-none !focus:ring-black"
-
+ 
                 />
               </div>
-
+ 
             </div>
           )}
-
-          {activeStep === 1 && (
+ 
+          {/* {activeStep === 1 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
                 This is the target selection step. Implement target audience inputs or options here as needed.
               </p>
             </div>
-          )}
-
-          {activeStep === 2 && (
+          )} */}
+ 
+          {activeStep === 1 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="scheduledDate">Scheduled Date</Label>
@@ -251,7 +249,7 @@ export default function CampaignForm() {
               </div>
             </div>
           )}
-
+ 
           {/* Fixed Navigation Buttons - side-by-side, below form fields */}
           <div className="sticky bottom-0 bg-white py-4">
             <div className="flex justify-between">
@@ -295,7 +293,7 @@ export default function CampaignForm() {
               </button>
             </div>
           </div>
-
+ 
           {/* Centered Pill-Style Stepper at the Bottom */}
           <div className="flex justify-center my-8">
             <div className="flex items-center space-x-4">
@@ -316,12 +314,12 @@ export default function CampaignForm() {
               })}
             </div>
           </div>
-
-
-
-
+ 
+ 
+ 
+ 
         </div>
-
+ 
         {/* Right column: Phone preview */}
         {/* Phone container */}
         <div className="relative w-[300px] h-[600px] bg-white border-2 border-gray-300 rounded-[2rem] shadow-lg overflow-hidden ml-10 mr-5 mt-[-60px]">
@@ -334,16 +332,16 @@ export default function CampaignForm() {
               <span className="w-4 h-3 bg-gray-400 rounded-sm inline-block" />
             </div>
           </div>
-
+ 
           {/* Camera hole */}
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-black rounded-full" />
-
+ 
           {/* Notification content area */}
           <div className="mt-10 p-4">
             {/* Single notification */}
             <div className="flex items-start space-x-2">
               {/* App icon */}
-
+ 
               <div className="flex-1 flex flex-col space-y-1">
                 <div className="text-xs text-gray-600 font-medium">
                   MIRAAYA • now
@@ -355,7 +353,7 @@ export default function CampaignForm() {
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-
+ 
                   </svg>
                 </div>
                 <div className="text-sm font-semibold">
@@ -377,15 +375,15 @@ export default function CampaignForm() {
               )}
             </div>
           </div>
-
+ 
           {/* Bottom bar */}
           <div className="absolute bottom-0 w-full h-6 flex items-center justify-center bg-white">
             <div className="w-20 h-1 bg-black/50 rounded-full" />
           </div>
         </div>
-
+ 
       </div>
-
+ 
     </div>
   );
 }
