@@ -1,6 +1,6 @@
 'use client';
 
-import { login } from '@/app/api/auth/login';
+import { login } from '@/app/api/auth/signin';
 import { cn } from '@/lib/utils';
 import { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
