@@ -11,11 +11,6 @@ const steps = [
     description:
       "Provide the campaign name, notification title, and body to proceed.",
   },
-  // {
-  //   label: "Target",
-  //   description:
-  //     "Select your target audience and choose the advertising channels where you would like to show your ads.",
-  // },
   {
     label: "Scheduling",
     description:
@@ -26,14 +21,15 @@ const steps = [
 export default function CampaignForm() {
   const [campaignName, setCampaignName] = useState("");
   const [title, setTitle] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
+  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split("T")[0]);
+  const [scheduledTime, setScheduledTime] = useState(
+    new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+  );
+  
   const [body, setBody] = useState("");
   const [activeStep, setActiveStep] = useState(0);
  
-  const [filePreview, setFilePreview] = useState<string>(""); // Local preview URL
   const [imgUrlInput, setImgUrlInput] = useState(""); // URL provided by the user
-  const [uploadedImgUrl, setUploadedImgUrl] = useState(""); // URL from Firebase Storage
  
  
   const isDisabled = activeStep === 0 && (!campaignName || !title || !body);
@@ -44,7 +40,7 @@ export default function CampaignForm() {
   const getFinalImageUrl = (): string => {
     // If a file was selected, use the file preview (or uploaded URL if needed)
     // Here we use the file preview for immediate display; however, you could also swap it for the uploaded URL.
-    return filePreview || imgUrlInput;
+    return imgUrlInput || "";
   };
  
   const handleNext = async () => {
@@ -79,7 +75,7 @@ export default function CampaignForm() {
  
     try {
       // Request notification permission and get token
-      const finalImgUrl = uploadedImgUrl || imgUrlInput;
+      const finalImgUrl = imgUrlInput || "";
       // Store the campaign in Firestore
       const campaignId = Date.now().toString();
       const newCampaign: Campaign = {
@@ -91,37 +87,8 @@ export default function CampaignForm() {
         send_at: selectedDateTime,
       };
       await storeCampaignToken(newCampaign);
- 
-      const delay = selectedDateTime.getTime() - now.getTime();
- 
- 
-        try {
-          const response = await fetch('/app/api/send-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title,
-              body,
-              image: finalImgUrl,
-              campaignId // ✅ Sending campaignId
-            }),
-          });
- 
-          if (!response.ok) throw new Error("Failed to send notification");
- 
-          const data = await response.json();
-          console.log("Notification Response:", data);
- 
-          if (data.success) {
-            new Notification(title, { body });
-          } else {
-            alert("Failed to send notification. Please try again.");
-          }
-        } catch (error) {
-          console.error("Error sending notification:", error);
-          alert("Failed to send notification. Please try again.");
-        }
- 
+      alert("Campaign scheduled successfully!");
+      
     } catch (error) {
       console.error("Error handling campaign submission:", error);
       alert("An error occurred while scheduling the campaign.");
@@ -208,15 +175,7 @@ export default function CampaignForm() {
  
             </div>
           )}
- 
-          {/* {activeStep === 1 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                This is the target selection step. Implement target audience inputs or options here as needed.
-              </p>
-            </div>
-          )} */}
- 
+
           {activeStep === 1 && (
             <div className="space-y-4">
               <div>

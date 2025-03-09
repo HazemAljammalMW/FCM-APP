@@ -12,7 +12,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase // i get it bro
-const firebaseApp = initializeApp(firebaseConfig);
+export const firebaseApp = initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
 // Get messaging instance - null on server-side // dont get it bro
 export const messaging: Messaging | null = typeof window !== 'undefined' ? getMessaging(firebaseApp) : null;

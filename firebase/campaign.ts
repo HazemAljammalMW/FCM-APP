@@ -4,7 +4,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
-
+import { firebaseApp } from "./firebase";
 export interface Campaign {
   id: string;
   name: string;
@@ -15,8 +15,8 @@ export interface Campaign {
 }
 
 export async function storeCampaignToken(campaign: Campaign) {
-  const db = getFirestore();
-  await setDoc(doc(db, "campaigns", campaign.id), {
+  const db = getFirestore(firebaseApp);
+    await setDoc(doc(db, "campaigns", campaign.id), {
     ...campaign,
     created_at: serverTimestamp(),
     sent_count: 0,
