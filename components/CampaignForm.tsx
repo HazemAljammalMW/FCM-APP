@@ -11,11 +11,11 @@ const steps = [
     description:
       "Provide the campaign name, notification title, and body to proceed.",
   },
-  {
-    label: "Target",
-    description:
-      "Select your target audience and choose the advertising channels where you would like to show your ads.",
-  },
+  // {
+  //   label: "Target",
+  //   description:
+  //     "Select your target audience and choose the advertising channels where you would like to show your ads.",
+  // },
   {
     label: "Scheduling",
     description:
@@ -94,8 +94,7 @@ export default function CampaignForm() {
 
       const delay = selectedDateTime.getTime() - now.getTime();
 
-      // Delay the notification sending
-      setTimeout(async () => {
+
         try {
           const response = await fetch('/app/api/send-notification', {
             method: 'POST',
@@ -122,7 +121,6 @@ export default function CampaignForm() {
           console.error("Error sending notification:", error);
           alert("Failed to send notification. Please try again.");
         }
-      }, delay);
 
     } catch (error) {
       console.error("Error handling campaign submission:", error);
@@ -211,15 +209,15 @@ export default function CampaignForm() {
             </div>
           )}
 
-          {activeStep === 1 && (
+          {/* {activeStep === 1 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
                 This is the target selection step. Implement target audience inputs or options here as needed.
               </p>
             </div>
-          )}
+          )} */}
 
-          {activeStep === 2 && (
+          {activeStep === 1 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="scheduledDate">Scheduled Date</Label>
