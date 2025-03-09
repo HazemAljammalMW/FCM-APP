@@ -5,8 +5,7 @@ import { FormEvent, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { toast } from 'react-hot-toast'; // For better error feedback
-import { login } from '@/app/api/auth/login';
+import { login } from '@/app/api/auth/signin';
 
 export function LoginForm() {
   const router = useRouter();
@@ -16,31 +15,25 @@ export function LoginForm() {
     event.preventDefault();
     setIsLoading(true);
 
+
     const formData = new FormData(event.currentTarget);
 
     try {
       const response = await login(formData);
 
-      if (response?.ok) {
-        router.push('/marketing'); // Redirect on success
-        toast.success('Login successful!');
+      if (response.success) {
+        router.push('/marketing');
       } else {
-        // Handle errors with user-friendly feedback
-        const errorMessage = response?.error || 'Login failed. Please try again.';
-        toast.error(errorMessage);
-
+        // Handle errors
+        console.error(response?.error || 'Login failed');
         if (response?.errors) {
-          console.error('Validation errors:', response.errors);
+          console.error("Validation errors:", response.errors);
         }
       }
     } catch (error) {
       console.error('An error occurred:', error);
-      toast.error('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsLoading(false); // Reset loading state
     }
   }
-
   return (
     <form onSubmit={handleSubmit} className={cn('flex flex-col gap-6')}>
       <div className="flex flex-col items-center gap-2 text-center">
