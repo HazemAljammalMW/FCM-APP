@@ -6,8 +6,6 @@ export default function Page() {
         <div className="mt-10">
         <CampaignForm/>
         </div>
-        </>
-        </div>
     );
 }
 
