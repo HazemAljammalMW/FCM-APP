@@ -18,7 +18,7 @@ export function LoginForm() {
     try {
       const response = await login(formData);
 
-      if (response?.ok) {
+      if (response?.success) {
         router.push('/marketing');
       } else {
         // Handle errors
